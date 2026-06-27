@@ -53,65 +53,21 @@ int main() {
     TRY("/usr/bin/xbps-install -y xdg-utils net-tools");
 
     printf("installing base components\n");
-    TRY("/usr/bin/xbps-install -y elogind dbus-elogind polkit-elogind rtkit NetworkManager");
+    TRY("/usr/bin/xbps-install -y elogind dbus-elogind polkit-elogind rtkit NetworkManager pipewire wireplumber");
 
     printf("making symlinks...\n");
     TRY("/usr/bin/ln -sf /etc/sv/NetworkManager /var/service");
     TRY("/usr/bin/ln -sf /etc/sv/dbus /var/service");
     TRY("/usr/bin/ln -sf /etc/sv/polkitd /var/service");
     TRY("/usr/bin/ln -sf /etc/sv/rtkit /var/service");
-
+    TRY("/usr/bin/ln -sf /etc/sv/pipewire /var/service");
+    TRY("/usr/bin/ln -sf /etc/sv/wireplumber /var/service");
+    
     printf("installing kde6 (plasma), sddm...\n");
     TRY("/usr/bin/xbps-install -y xorg-minimal kde5 kde5-baseapps sddm");
 
     if (ask_user("install firefox?")) {
         TRY("/usr/bin/xbps-install -y firefox");
-    }
-
-    printf("detecting environment and video card...\n");
-    TRY("/usr/bin/xbps-install -y pciutils");
-
-    int is_vm = (system("/usr/bin/grep -iq 'hypervisor' /proc/cpuinfo 2>/dev/null") == 0 ||
-                 system("/usr/bin/grep -iq 'vmware\\|qemu\\|virtualbox' /sys/class/dmi/id/product_name 2>/dev/null") == 0 ||
-                 system("/usr/bin/lspci | /usr/bin/grep -iq 'vmware\\|virtualbox\\|qemu'") == 0);
-
-    int is_nvidia = 0;
-    int is_intel  = 0;
-    int is_amd    = 0;
-
-    if (!is_vm) {
-        is_nvidia = (system("/usr/bin/lspci | /usr/bin/grep -iq nvidia") == 0);
-        is_intel  = (system("/usr/bin/lspci | /usr/bin/grep -iq intel") == 0);
-        is_amd    = (system("/usr/bin/lspci | /usr/bin/grep -iq 'amd\\|ati'") == 0);
-
-        if (is_nvidia) {
-            printf("detected NVIDIA GPU\n");
-            if (ask_user("install proprietary nvidia driver (nvidia)?")) {
-                TRY("/usr/bin/xbps-install -y nvidia");
-            } else if (ask_user("install opensource nvidia driver (nouveau)?")) {
-                TRY("/usr/bin/xbps-install -y nouveau");
-            }
-        }
-
-        if (is_intel) {
-            printf("detected Intel GPU\n");
-            TRY("/usr/bin/xbps-install -y linux-firmware-intel");
-        }
-
-        if (is_amd) {
-            printf("detected AMD GPU\n");
-            TRY("/usr/bin/xbps-install -y linux-firmware-amd");
-        }
-    } else {
-        printf("virtual environment detected, skipping physical GPU firmware.\n");
-    }
-
-    if (is_intel || is_amd || is_nvidia || is_vm) {
-        TRY("/usr/bin/xbps-install -y mesa-dri");
-    }
-
-    if (ask_user("install open-vm-tools (vmware tools)?")) {
-        TRY("/usr/bin/xbps-install -y open-vm-tools && /usr/bin/ln -sf /etc/sv/vmtoolsd /var/service");
     }
 
     printf("installing sddm symlink...\n");
