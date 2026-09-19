@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -17,6 +18,109 @@ int ask_user(const char *question) {
         return 0;
     }
     return (answer == 'y' || answer == 'Y');
+}
+
+int drivers(void) {
+    int driverinput;
+
+    printf("[1] AMD/ATI\n"
+           "[2] Intel\n"
+           "[3] Nvidia [Official Proprietary 'nvidia' driver]\n"
+           "[4] Nvidia (Open-Source Community 'nouveau' driver)\n\n");
+    printf("[?] > ");
+
+    if (scanf("%d", &driverinput) != 1) {
+        fprintf(stderr, "Invalid input.\n");
+        // clear the bad input from stdin so it doesn't loop forever elsewhere
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF) {}
+        return 1;
+    }
+
+    switch (driverinput) {
+        case 1:
+            /* 
+            echo 'LIBVA_DRIVER_NAME=radeonsi' >> /etc/environment
+            echo 'VDPAU_DRIVER=va_gl' >> /etc/environment 
+            */
+            printf("Selected: AMD/ATI\n");
+            sleep(3);
+            TRY("/usr/bin/xbps-install -S linux-firmware-amd mesa-dri vulkan-loader mesa-vulkan-radeon amdvlk xf86-video-amdgpu xf86-video-ati mesa-vaapi libvdpau-va-gl");
+            TRY("grep -qxF 'LIBVA_DRIVER_NAME=radeonsi' /etc/environment || echo 'LIBVA_DRIVER_NAME=radeonsi' >> /etc/environment"); // made by ai
+            TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment"); // made by ai
+            break;
+        
+        case 2:
+            printf("Selected: Intel\n");
+            sleep(3);
+            // again starting ai cuz i am too dumb
+            TRY("/usr/bin/xbps-install -S linux-firmware-intel mesa-dri vulkan-loader mesa-vulkan-intel intel-video-accel libvdpau-va-gl");
+            TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment");
+            // end ai
+            break;
+        
+        case 3:
+            printf("Selected: Nvidia (Proprietary)\n");
+            // start ai cuz i am too lazy and dumb
+            sleep(2);
+    
+            printf("Detected GPU info:\n");
+            TRY("/usr/bin/lspci -k -d ::03xx | grep -i nvidia");
+        
+            FILE *fp = popen("/usr/bin/lspci -d ::03xx | grep -i nvidia", "r");
+            if (!fp) { perror("popen failed"); break; }
+        
+            char line[512] = {0};
+            fgets(line, sizeof(line), fp);
+            pclose(fp);
+        
+            const char *pkg = NULL;
+    
+            if (strstr(line, "RTX 20") || strstr(line, "RTX 30") || strstr(line, "RTX 40") ||
+                strstr(line, "RTX 50") || strstr(line, "GTX 16") || strstr(line, "TITAN RTX")) {
+                pkg = "nvidia"; // Turing and newer
+            } else if (strstr(line, "GTX 9") || strstr(line, "GTX 10") || strstr(line, "TITAN X") ||
+                       strstr(line, "TITAN V")) {
+                pkg = "nvidia580"; // Maxwell - Volta
+            } else if (strstr(line, "GTX 7") || strstr(line, "GTX 6") || strstr(line, "TITAN\n") ||
+                       strstr(line, "TITAN Z") || strstr(line, "TITAN Black")) {
+                pkg = "nvidia470"; // Kepler
+            } else if (strstr(line, "GTX 5") || strstr(line, "GTX 4") || strstr(line, "GT 5") ||
+                       strstr(line, "GT 4")) {
+                pkg = "nvidia390"; // Fermi
+            }
+        
+            if (!pkg) {
+                printf("Could not auto-detect GPU family from: %s\n", line);
+                printf("Please check manually: lspci -k -d ::03xx\n");
+                printf("And consult: https://nouveau.freedesktop.org/CodeNames.html\n");
+                break;
+            }
+        
+            printf("Detected family package: %s\n", pkg);
+            char cmd[256];
+            snprintf(cmd, sizeof(cmd), "/usr/bin/xbps-install -S %s", pkg);
+            sleep(1);
+            TRY(cmd);
+            break;
+        // end ai
+        
+        case 4:
+            printf("Selected: Nvidia (Nouveau)\n");
+            sleep(3);
+            // start ai cuz i am too lazy and dumb x2
+            TRY("/usr/bin/xbps-install -S mesa-dri vulkan-loader mesa-vulkan-nouveau xf86-video-nouveau mesa-vaapi libvdpau-va-gl");
+            TRY("grep -qxF 'LIBVA_DRIVER_NAME=nouveau' /etc/environment || echo 'LIBVA_DRIVER_NAME=nouveau' >> /etc/environment");
+            TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment");
+            // end ai
+            break;
+        default:
+            printf("Invalid selection: %d\n", driverinput);
+            sleep(1);
+            return drivers(); // recursive bla bla bla i am too dumb to make int done = 0;
+            break;
+    }
+    return 0;
 }
 
 int main() {
@@ -64,8 +168,14 @@ int main() {
     TRY("/usr/bin/ln -sf /etc/sv/wireplumber /var/service");
     
     printf("installing kde6 (plasma), sddm...\n");
-    TRY("/usr/bin/xbps-install -y xorg-minimal kde5 kde5-baseapps sddm");
-
+    TRY("/usr/bin/xbps-install -y xorg kde5 kde5-baseapps sddm");
+    
+    if (drivers() != 0) {
+        fprintf(stderr, "driver installation failed\n");
+        sleep(3);
+        return 1;
+    }
+    
     if (ask_user("install firefox?")) {
         TRY("/usr/bin/xbps-install -y firefox");
     }
