@@ -22,7 +22,7 @@ int ask_user(const char *question) {
 
 int drivers(void) {
     int driverinput;
-
+    
     printf("[1] AMD/ATI\n"
            "[2] Intel\n"
            "[3] Nvidia [Official Proprietary 'nvidia' driver]\n"
@@ -135,9 +135,9 @@ int main() {
         return 1;
     }
     
-    if (ask_user("update repos?")) {
-        TRY("/usr/bin/xbps-install -S");
-    }
+    TRY("/usr/bin/xbps-install -S void-repo-nonfree"); // install repo for propietary nvidia driver
+    
+    TRY("/usr/bin/xbps-install -S");
 
     printf("installing xdg-user-dirs\n");
     TRY("/usr/bin/xbps-install -y xdg-user-dirs");
@@ -183,6 +183,11 @@ int main() {
     printf("installing sddm symlink...\n");
     TRY("/usr/bin/ln -sf /etc/sv/sddm /var/service");
 
-    printf("installation finished successfully!\nIf SDDM does not start, you can try rebooting.\n");
+    printf("installation finished successfully!\n");
+    
+    if (ask_user("reboot?")) {
+        TRY("/usr/bin/reboot");
+    }
+    
     return 0;
 }
