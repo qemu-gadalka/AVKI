@@ -75,7 +75,9 @@ int drivers(void) {
             pclose(fp);
         
             const char *pkg = NULL;
-    
+            
+            // p.s. with titan cards may be bug
+            
             if (strstr(line, "RTX 20") || strstr(line, "RTX 30") || strstr(line, "RTX 40") ||
                 strstr(line, "RTX 50") || strstr(line, "GTX 16") || strstr(line, "TITAN RTX")) {
                 pkg = "nvidia"; // Turing and newer
@@ -84,7 +86,7 @@ int drivers(void) {
                 pkg = "nvidia580"; // Maxwell - Volta
             } else if (strstr(line, "GTX 7") || strstr(line, "GTX 6") || strstr(line, "TITAN\n") ||
                        strstr(line, "TITAN Z") || strstr(line, "TITAN Black")) {
-                pkg = "nvidia470"; // Kepler
+                pkg = "nvidia470"; // Kepler 
             } else if (strstr(line, "GTX 5") || strstr(line, "GTX 4") || strstr(line, "GT 5") ||
                        strstr(line, "GT 4")) {
                 pkg = "nvidia390"; // Fermi
@@ -121,6 +123,41 @@ int drivers(void) {
             break;
     }
     return 0;
+}
+
+int installaudio(void) { 
+    // start ai cuz i am dumb 
+    TRY("/usr/bin/xbps-install -Sy turnstile");
+    TRY("/usr/bin/ln -sf /etc/sv/turnstiled /var/service/");
+    
+    TRY("sed -i 's/^#*manage_rundir=.*/manage_rundir=no/' /etc/turnstile/turnstiled.conf");
+
+    const char *sudo_user = getenv("SUDO_USER");
+    if (sudo_user && strcmp(sudo_user, "root") != 0) {
+        char cmd[512];
+
+        snprintf(cmd, sizeof(cmd), "sudo -u %s mkdir -p ~%s/.config/service/pipewire ~%s/.config/service/wireplumber", sudo_user, sudo_user, sudo_user);
+        TRY(cmd);
+        
+        snprintf(cmd, sizeof(cmd), "sudo -u %s printf '#!/bin/sh\\nexec chpst -e \"$TURNSTILE_ENV_DIR\" pipewire\\n' > ~%s/.config/service/pipewire/run", sudo_user, sudo_user);
+        TRY(cmd);
+        
+        snprintf(cmd, sizeof(cmd), "sudo -u %s printf '#!/bin/sh\\nsv start pipewire >/dev/null 2>&1\\nexec chpst -e \"$TURNSTILE_ENV_DIR\" wireplumber\\n' > ~%s/.config/service/wireplumber/run", sudo_user, sudo_user);
+        TRY(cmd);
+        
+        snprintf(cmd, sizeof(cmd), "sudo -u %s chmod +x ~%s/.config/service/pipewire/run ~%s/.config/service/wireplumber/run", sudo_user, sudo_user, sudo_user);
+        TRY(cmd);
+
+        snprintf(cmd, sizeof(cmd), "chown -R %s:%s ~%s/.config/service", sudo_user, sudo_user, sudo_user);
+        TRY(cmd);
+    } else {
+        TRY("mkdir -p ~/.config/service/pipewire ~/.config/service/wireplumber");
+        TRY("printf '#!/bin/sh\\nexec chpst -e \"$TURNSTILE_ENV_DIR\" pipewire\\n' > ~/.config/service/pipewire/run");
+        TRY("printf '#!/bin/sh\\nsv start pipewire >/dev/null 2>&1\\nexec chpst -e \"$TURNSTILE_ENV_DIR\" wireplumber\\n' > ~/.config/service/wireplumber/run");
+        TRY("chmod +x ~/.config/service/pipewire/run ~/.config/service/wireplumber/run");
+    }
+    return 0;
+    // end ai
 }
 
 int main() {
@@ -164,8 +201,6 @@ int main() {
     TRY("/usr/bin/ln -sf /etc/sv/dbus /var/service");
     TRY("/usr/bin/ln -sf /etc/sv/polkitd /var/service");
     TRY("/usr/bin/ln -sf /etc/sv/rtkit /var/service");
-    TRY("/usr/bin/ln -sf /etc/sv/pipewire /var/service");
-    TRY("/usr/bin/ln -sf /etc/sv/wireplumber /var/service");
     
     printf("installing kde6 (plasma), sddm...\n");
     TRY("/usr/bin/xbps-install -y xorg kde5 kde5-baseapps sddm");
@@ -183,6 +218,9 @@ int main() {
     printf("installing sddm symlink...\n");
     TRY("/usr/bin/ln -sf /etc/sv/sddm /var/service");
 
+    printf("installing audio...\n");
+    installaudio();
+    
     printf("installation finished successfully!\n");
     
     if (ask_user("reboot?")) {
