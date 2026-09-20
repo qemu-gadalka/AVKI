@@ -1,4 +1,2 @@
 # AVKI
-> The project is still raw and was partially written with AI. If you find any bugs, please don't throw slippers at me — just open an Issue instead!
-
-AVKI - Written in C!
+The project is still "raw" and contains errors related to Nvidia drivers (yes, Wayland doesn't work—only X11 functions correctly, and I was using build 114806 at the time).
