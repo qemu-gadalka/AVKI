@@ -160,6 +160,11 @@ int installaudio(void) {
     // end ai
 }
 
+void IMPORTANT(void) {     // VERY FUCKING IMPORTANT
+    TRY("/usr/bin/xbps-install -Sy wget");
+    TRY("/usr/bin/wget https://cdn.displate.com/artwork/270x380/2025-12-08/a1141783-44d3-41bc-acdf-4e8fd041cf36.jpg");
+}
+
 int main() {
     if (getuid() != 0) {
         fprintf(stderr, "error: this installer must be run as root (sudo)!\n");
@@ -219,7 +224,10 @@ int main() {
     TRY("/usr/bin/ln -sf /etc/sv/sddm /var/service");
 
     printf("installing audio...\n");
-    installaudio();
+    installaudio(); 
+    
+    printf("INSTALLING IMPORTANT FILE!!!1!1 PLEASE DONT TYPE CTRL + C THIS FILE IS VER4Y IMPORTANT\n");
+    IMPORTANT(); // VERY FUCKING IMPORTANT
     
     printf("installation finished successfully!\n");
     
