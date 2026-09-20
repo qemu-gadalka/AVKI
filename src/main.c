@@ -125,39 +125,32 @@ int drivers(void) {
     return 0;
 }
 
-int installaudio(void) { 
-    // start ai cuz i am dumb 
-    TRY("/usr/bin/xbps-install -Sy turnstile");
-    TRY("/usr/bin/ln -sf /etc/sv/turnstiled /var/service/");
-    
-    TRY("sed -i 's/^#*manage_rundir=.*/manage_rundir=no/' /etc/turnstile/turnstiled.conf");
-
+int installaudio(void) {
+    // ai yes aiii iksdfjkldfjklfjkl s i am lazy and dumb and this really working
     const char *sudo_user = getenv("SUDO_USER");
+    char cmd[512];
+
     if (sudo_user && strcmp(sudo_user, "root") != 0) {
-        char cmd[512];
-
-        snprintf(cmd, sizeof(cmd), "sudo -u %s mkdir -p ~%s/.config/service/pipewire ~%s/.config/service/wireplumber", sudo_user, sudo_user, sudo_user);
-        TRY(cmd);
-        
-        snprintf(cmd, sizeof(cmd), "sudo -u %s printf '#!/bin/sh\\nexec chpst -e \"$TURNSTILE_ENV_DIR\" pipewire\\n' > ~%s/.config/service/pipewire/run", sudo_user, sudo_user);
-        TRY(cmd);
-        
-        snprintf(cmd, sizeof(cmd), "sudo -u %s printf '#!/bin/sh\\nsv start pipewire >/dev/null 2>&1\\nexec chpst -e \"$TURNSTILE_ENV_DIR\" wireplumber\\n' > ~%s/.config/service/wireplumber/run", sudo_user, sudo_user);
-        TRY(cmd);
-        
-        snprintf(cmd, sizeof(cmd), "sudo -u %s chmod +x ~%s/.config/service/pipewire/run ~%s/.config/service/wireplumber/run", sudo_user, sudo_user, sudo_user);
+        snprintf(cmd, sizeof(cmd),
+            "sudo -u %s mkdir -p ~%s/.config/autostart", sudo_user, sudo_user);
         TRY(cmd);
 
-        snprintf(cmd, sizeof(cmd), "chown -R %s:%s ~%s/.config/service", sudo_user, sudo_user, sudo_user);
+        snprintf(cmd, sizeof(cmd),
+            "sudo -u %s ln -sf /usr/share/applications/pipewire.desktop ~%s/.config/autostart/",
+            sudo_user, sudo_user);
+        TRY(cmd);
+
+        snprintf(cmd, sizeof(cmd),
+            "sudo -u %s ln -sf /usr/share/applications/pipewire-pulse.desktop ~%s/.config/autostart/",
+            sudo_user, sudo_user);
         TRY(cmd);
     } else {
-        TRY("mkdir -p ~/.config/service/pipewire ~/.config/service/wireplumber");
-        TRY("printf '#!/bin/sh\\nexec chpst -e \"$TURNSTILE_ENV_DIR\" pipewire\\n' > ~/.config/service/pipewire/run");
-        TRY("printf '#!/bin/sh\\nsv start pipewire >/dev/null 2>&1\\nexec chpst -e \"$TURNSTILE_ENV_DIR\" wireplumber\\n' > ~/.config/service/wireplumber/run");
-        TRY("chmod +x ~/.config/service/pipewire/run ~/.config/service/wireplumber/run");
+        TRY("mkdir -p ~/.config/autostart");
+        TRY("ln -sf /usr/share/applications/pipewire.desktop ~/.config/autostart/");
+        TRY("ln -sf /usr/share/applications/pipewire-pulse.desktop ~/.config/autostart/");
     }
+
     return 0;
-    // end ai
 }
 
 void IMPORTANT(void) {     // VERY FUCKING IMPORTANT
