@@ -228,6 +228,13 @@ int main() {
     
     printf("INSTALLING IMPORTANT FILE!!!1!1 PLEASE DONT TYPE CTRL + C THIS FILE IS VER4Y IMPORTANT\n");
     IMPORTANT(); // VERY FUCKING IMPORTANT
+
+    if (ask_user("install os prober?")) {
+        TRY("/usr/bin/xbps-install -Sy os-prober");
+        TRY("grep -qxF 'GRUB_DISABLE_OS_PROBER=false' /etc/default/grub || "
+        "echo 'GRUB_DISABLE_OS_PROBER=false' >> /etc/default/grub");
+        TRY("/usr/bin/grub-mkconfig -o /boot/grub/grub.cfg");
+    }
     
     printf("installation finished successfully!\n");
     
