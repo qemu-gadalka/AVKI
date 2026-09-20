@@ -45,7 +45,7 @@ int drivers(void) {
             */
             printf("Selected: AMD/ATI\n");
             sleep(3);
-            TRY("/usr/bin/xbps-install -S linux-firmware-amd mesa-dri vulkan-loader mesa-vulkan-radeon amdvlk xf86-video-amdgpu xf86-video-ati mesa-vaapi libvdpau-va-gl");
+            TRY("/usr/bin/xbps-install -Sy linux-firmware-amd mesa-dri vulkan-loader mesa-vulkan-radeon amdvlk xf86-video-amdgpu xf86-video-ati mesa-vaapi libvdpau-va-gl");
             TRY("grep -qxF 'LIBVA_DRIVER_NAME=radeonsi' /etc/environment || echo 'LIBVA_DRIVER_NAME=radeonsi' >> /etc/environment"); // made by ai
             TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment"); // made by ai
             break;
@@ -54,7 +54,7 @@ int drivers(void) {
             printf("Selected: Intel\n");
             sleep(3);
             // again starting ai cuz i am too dumb
-            TRY("/usr/bin/xbps-install -S linux-firmware-intel mesa-dri vulkan-loader mesa-vulkan-intel intel-video-accel libvdpau-va-gl");
+            TRY("/usr/bin/xbps-install -Sy linux-firmware-intel mesa-dri vulkan-loader mesa-vulkan-intel intel-video-accel libvdpau-va-gl");
             TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment");
             // end ai
             break;
@@ -109,7 +109,7 @@ int drivers(void) {
             printf("Selected: Nvidia (Nouveau)\n");
             sleep(3);
             // start ai cuz i am too lazy and dumb x2
-            TRY("/usr/bin/xbps-install -S mesa-dri vulkan-loader mesa-vulkan-nouveau xf86-video-nouveau mesa-vaapi libvdpau-va-gl");
+            TRY("/usr/bin/xbps-install -Sy mesa-dri vulkan-loader mesa-vulkan-nouveau xf86-video-nouveau mesa-vaapi libvdpau-va-gl");
             TRY("grep -qxF 'LIBVA_DRIVER_NAME=nouveau' /etc/environment || echo 'LIBVA_DRIVER_NAME=nouveau' >> /etc/environment");
             TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment");
             // end ai
@@ -135,9 +135,9 @@ int main() {
         return 1;
     }
     
-    TRY("/usr/bin/xbps-install -S void-repo-nonfree"); // install repo for propietary nvidia driver
+    TRY("/usr/bin/xbps-install -Sy void-repo-nonfree"); // install repo for propietary nvidia driver
     
-    TRY("/usr/bin/xbps-install -S");
+    TRY("/usr/bin/xbps-install -Sy");
 
     printf("installing xdg-user-dirs\n");
     TRY("/usr/bin/xbps-install -y xdg-user-dirs");
