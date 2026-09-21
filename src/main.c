@@ -21,108 +21,99 @@ int ask_user(const char *question) {
 }
 
 int drivers(void) {
+    // full ai.. sorry
     int driverinput;
-    
-    printf("[1] AMD/ATI\n"
-           "[2] Intel\n"
-           "[3] Nvidia [Official Proprietary 'nvidia' driver]\n"
-           "[4] Nvidia (Open-Source Community 'nouveau' driver)\n\n");
-    printf("[?] > ");
 
-    if (scanf("%d", &driverinput) != 1) {
-        fprintf(stderr, "Invalid input.\n");
-        // clear the bad input from stdin so it doesn't loop forever elsewhere
-        int c;
-        while ((c = getchar()) != '\n' && c != EOF) {}
-        return 1;
-    }
+    while (1) {
+        printf("\n[1] AMD/ATI\n"
+               "[2] Intel\n"
+               "[3] Nvidia [Official Proprietary 'nvidia' driver]\n"
+               "[4] Nvidia (Open-Source Community 'nouveau' driver)\n\n");
+        printf("[?] > ");
 
-    switch (driverinput) {
-        case 1:
-            /* 
-            echo 'LIBVA_DRIVER_NAME=radeonsi' >> /etc/environment
-            echo 'VDPAU_DRIVER=va_gl' >> /etc/environment 
-            */
-            printf("Selected: AMD/ATI\n");
-            sleep(3);
-            TRY("/usr/bin/xbps-install -Sy linux-firmware-amd mesa-dri vulkan-loader mesa-vulkan-radeon amdvlk xf86-video-amdgpu xf86-video-ati mesa-vaapi libvdpau-va-gl");
-            TRY("grep -qxF 'LIBVA_DRIVER_NAME=radeonsi' /etc/environment || echo 'LIBVA_DRIVER_NAME=radeonsi' >> /etc/environment"); // made by ai
-            TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment"); // made by ai
-            break;
-        
-        case 2:
-            printf("Selected: Intel\n");
-            sleep(3);
-            // again starting ai cuz i am too dumb
-            TRY("/usr/bin/xbps-install -Sy linux-firmware-intel mesa-dri vulkan-loader mesa-vulkan-intel intel-video-accel libvdpau-va-gl");
-            TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment");
-            // end ai
-            break;
-        
-        case 3:
-            printf("Selected: Nvidia (Proprietary)\n");
-            // start ai cuz i am too lazy and dumb
-            sleep(2);
-    
-            printf("Detected GPU info:\n");
-            TRY("/usr/bin/lspci -k -d ::03xx | grep -i nvidia");
-        
-            FILE *fp = popen("/usr/bin/lspci -d ::03xx | grep -i nvidia", "r");
-            if (!fp) { perror("popen failed"); break; }
-        
-            char line[512] = {0};
-            fgets(line, sizeof(line), fp);
-            pclose(fp);
-        
-            const char *pkg = NULL;
-            
-            // p.s. with titan cards may be bug
-            
-            if (strstr(line, "RTX 20") || strstr(line, "RTX 30") || strstr(line, "RTX 40") ||
-                strstr(line, "RTX 50") || strstr(line, "GTX 16") || strstr(line, "TITAN RTX")) {
-                pkg = "nvidia"; // Turing and newer
-            } else if (strstr(line, "GTX 9") || strstr(line, "GTX 10") || strstr(line, "TITAN X") ||
-                       strstr(line, "TITAN V")) {
-                pkg = "nvidia580"; // Maxwell - Volta
-            } else if (strstr(line, "GTX 7") || strstr(line, "GTX 6") || strstr(line, "TITAN\n") ||
-                       strstr(line, "TITAN Z") || strstr(line, "TITAN Black")) {
-                pkg = "nvidia470"; // Kepler 
-            } else if (strstr(line, "GTX 5") || strstr(line, "GTX 4") || strstr(line, "GT 5") ||
-                       strstr(line, "GT 4")) {
-                pkg = "nvidia390"; // Fermi
+        if (scanf("%d", &driverinput) != 1) {
+            fprintf(stderr, "Invalid input.\n");
+            // clear the bad input from stdin so it doesn't loop forever elsewhere
+            int c;
+            while ((c = getchar()) != '\n' && c != EOF) {}
+            return 1;
+        }
+
+        switch (driverinput) {
+            case 1:
+                printf("Selected: AMD/ATI\n");
+                sleep(3);
+                TRY("/usr/bin/xbps-install -Sy linux-firmware-amd mesa-dri vulkan-loader mesa-vulkan-radeon amdvlk xf86-video-amdgpu xf86-video-ati mesa-vaapi libvdpau-va-gl");
+                TRY("grep -qxF 'LIBVA_DRIVER_NAME=radeonsi' /etc/environment || echo 'LIBVA_DRIVER_NAME=radeonsi' >> /etc/environment");
+                TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment");
+                return 0;
+
+            case 2:
+                printf("Selected: Intel\n");
+                sleep(3);
+                TRY("/usr/bin/xbps-install -Sy linux-firmware-intel mesa-dri vulkan-loader mesa-vulkan-intel intel-video-accel libvdpau-va-gl");
+                TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment");
+                return 0;
+
+            case 3: {
+                printf("Selected: Nvidia (Proprietary)\n");
+                sleep(2);
+
+                printf("Detected GPU info:\n");
+                TRY("/usr/bin/lspci -k -d ::03xx | grep -i nvidia");
+
+                FILE *fp = popen("/usr/bin/lspci -d ::03xx | grep -i nvidia", "r");
+                if (!fp) { perror("popen failed"); return 1; }
+
+                char line[512] = {0};
+                fgets(line, sizeof(line), fp);
+                pclose(fp);
+
+                const char *pkg = NULL;
+
+                if (strstr(line, "RTX 20") || strstr(line, "RTX 30") || strstr(line, "RTX 40") ||
+                    strstr(line, "RTX 50") || strstr(line, "GTX 16") || strstr(line, "TITAN RTX")) {
+                    pkg = "nvidia";
+                } else if (strstr(line, "GTX 9") || strstr(line, "GTX 10") || strstr(line, "TITAN X") ||
+                           strstr(line, "TITAN V")) {
+                    pkg = "nvidia580";
+                } else if (strstr(line, "GTX 7") || strstr(line, "GTX 6") || strstr(line, "TITAN\n") ||
+                           strstr(line, "TITAN Z") || strstr(line, "TITAN Black")) {
+                    pkg = "nvidia470";
+                } else if (strstr(line, "GTX 5") || strstr(line, "GTX 4") || strstr(line, "GT 5") ||
+                           strstr(line, "GT 4")) {
+                    pkg = "nvidia390";
+                }
+
+                if (!pkg) {
+                    printf("Could not auto-detect GPU family from: %s\n", line);
+                    printf("Please check manually: lspci -k -d ::03xx\n");
+                    printf("And consult: https://nouveau.freedesktop.org/CodeNames.html\n");
+                    return 1;
+                }
+
+                printf("Detected family package: %s\n", pkg);
+                char cmd[256];
+                snprintf(cmd, sizeof(cmd), "/usr/bin/xbps-install -S %s", pkg);
+                sleep(1);
+                TRY(cmd);
+                return 0;
             }
-        
-            if (!pkg) {
-                printf("Could not auto-detect GPU family from: %s\n", line);
-                printf("Please check manually: lspci -k -d ::03xx\n");
-                printf("And consult: https://nouveau.freedesktop.org/CodeNames.html\n");
+
+            case 4:
+                printf("Selected: Nvidia (Nouveau)\n");
+                sleep(3);
+                TRY("/usr/bin/xbps-install -Sy mesa-dri vulkan-loader mesa-vulkan-nouveau xf86-video-nouveau mesa-vaapi libvdpau-va-gl");
+                TRY("grep -qxF 'LIBVA_DRIVER_NAME=nouveau' /etc/environment || echo 'LIBVA_DRIVER_NAME=nouveau' >> /etc/environment");
+                TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment");
+                return 0;
+
+            default:
+                printf("Invalid selection: %d\n", driverinput);
+                sleep(1);
                 break;
-            }
-        
-            printf("Detected family package: %s\n", pkg);
-            char cmd[256];
-            snprintf(cmd, sizeof(cmd), "/usr/bin/xbps-install -S %s", pkg);
-            sleep(1);
-            TRY(cmd);
-            break;
-        // end ai
-        
-        case 4:
-            printf("Selected: Nvidia (Nouveau)\n");
-            sleep(3);
-            // start ai cuz i am too lazy and dumb x2
-            TRY("/usr/bin/xbps-install -Sy mesa-dri vulkan-loader mesa-vulkan-nouveau xf86-video-nouveau mesa-vaapi libvdpau-va-gl");
-            TRY("grep -qxF 'LIBVA_DRIVER_NAME=nouveau' /etc/environment || echo 'LIBVA_DRIVER_NAME=nouveau' >> /etc/environment");
-            TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment");
-            // end ai
-            break;
-        default:
-            printf("Invalid selection: %d\n", driverinput);
-            sleep(1);
-            return drivers(); // recursive bla bla bla i am too dumb to make int done = 0;
-            break;
+        }
     }
-    return 0;
 }
 
 int installaudio(void) {
@@ -149,16 +140,27 @@ int installaudio(void) {
         TRY("ln -sf /usr/share/applications/pipewire.desktop ~/.config/autostart/");
         TRY("ln -sf /usr/share/applications/pipewire-pulse.desktop ~/.config/autostart/");
     }
-
+    printf("done\n");
     return 0;
 }
 
-void IMPORTANT(void) {     // VERY FUCKING IMPORTANT
+int IMPORTANT(void) {     // VERY FUCKING IMPORTANT
     TRY("/usr/bin/xbps-install -Sy wget");
     TRY("/usr/bin/wget https://cdn.displate.com/artwork/270x380/2025-12-08/a1141783-44d3-41bc-acdf-4e8fd041cf36.jpg -q");
+    return 0;
 }
 
-int main() {
+int instchronyc(void) {
+    TRY("/usr/bin/xbps-install -Sy chrony");
+    TRY("/usr/bin/ln -sf /etc/sv/chronyd /var/service/");
+    sleep(1);
+    TRY("chronyc burst 1/2");
+    TRY("chronyc makestep");
+    printf("chrony installed and configured\n");
+    return 0;
+}
+
+int main(void) {
     if (getuid() != 0) {
         fprintf(stderr, "error: this installer must be run as root (sudo)!\n");
         return 1;
@@ -217,19 +219,26 @@ int main() {
     TRY("/usr/bin/ln -sf /etc/sv/sddm /var/service");
 
     printf("installing audio...\n");
-    installaudio(); 
+    if (installaudio() != 0) fprintf(stderr, "audio setup failed, continuing anyway\n");
     
     printf("INSTALLING IMPORTANT FILE!!!1!1 PLEASE DONT TYPE CTRL + C THIS FILE IS VER4Y IMPORTANT\n");
     IMPORTANT(); // VERY FUCKING IMPORTANT
 
-    if (ask_user("install os prober?")) {
+    if (ask_user("install and configure os prober?")) {
         TRY("/usr/bin/xbps-install -Sy os-prober");
         TRY("grep -qxF 'GRUB_DISABLE_OS_PROBER=false' /etc/default/grub || "
         "echo 'GRUB_DISABLE_OS_PROBER=false' >> /etc/default/grub");
         TRY("/usr/bin/grub-mkconfig -o /boot/grub/grub.cfg");
+        printf("done\n");
     }
     
-    printf("installation finished successfully!\n");
+    if (ask_user("install and configure chrony?")) {
+        if (instchronyc() != 0) {
+            fprintf(stderr, "chrony setup failed, continuing anyway\n");
+        }
+    }
+    
+    printf("installation finished successfully!\nP.S: dont put the pipewire and wireplumber to /var/service\n\n");
     
     if (ask_user("reboot?")) {
         TRY("/usr/bin/reboot");
