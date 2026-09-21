@@ -3,6 +3,8 @@ name: Compile AVKI
 on:
   push:
     branches: [ "main", "master" ]
+    paths:
+      - "src/**"
 
 jobs:
   build-and-release:
