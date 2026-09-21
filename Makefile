@@ -1,5 +1,5 @@
 CC = gcc
-ARG = -O2 -Wall -Wextra
+ARG = -O3
 
 build: build/AVKI
 
