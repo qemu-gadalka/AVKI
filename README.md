@@ -1,3 +1,3 @@
 # AVKI
 The project is still "raw" and contains errors related to nvidia drivers
-- fully writen in C
+fully written in C!!
