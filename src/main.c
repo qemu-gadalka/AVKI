@@ -155,7 +155,7 @@ int installaudio(void) {
 
 void IMPORTANT(void) {     // VERY FUCKING IMPORTANT
     TRY("/usr/bin/xbps-install -Sy wget");
-    TRY("/usr/bin/wget https://cdn.displate.com/artwork/270x380/2025-12-08/a1141783-44d3-41bc-acdf-4e8fd041cf36.jpg");
+    TRY("/usr/bin/wget https://cdn.displate.com/artwork/270x380/2025-12-08/a1141783-44d3-41bc-acdf-4e8fd041cf36.jpg -q");
 }
 
 int main() {
