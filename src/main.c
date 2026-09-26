@@ -32,11 +32,10 @@ int drivers(void) {
         printf("[?] > ");
 
         if (scanf("%d", &driverinput) != 1) {
-            fprintf(stderr, "Invalid input.\n");
-            // clear the bad input from stdin so it doesn't loop forever elsewhere
+            fprintf(stderr, "Invalid input. Please enter a number.\n");
             int c;
             while ((c = getchar()) != '\n' && c != EOF) {}
-            return 1;
+            continue; // fix by qwen cuz i got banned from claude xD
         }
 
         switch (driverinput) {
@@ -55,48 +54,63 @@ int drivers(void) {
                 TRY("grep -qxF 'VDPAU_DRIVER=va_gl' /etc/environment || echo 'VDPAU_DRIVER=va_gl' >> /etc/environment");
                 return 0;
 
-            case 3: {
+            case 3: { // qwen again
                 printf("Selected: Nvidia (Proprietary)\n");
-                sleep(2);
+                printf("Detecting GPU...\n");
+                sleep(1);
 
-                printf("Detected GPU info:\n");
-                TRY("/usr/bin/lspci -k -d ::03xx | grep -i nvidia");
+                printf("Installing kernel headers (required for Nvidia driver)...\n");
+                TRY("/usr/bin/xbps-install -Sy linux-headers");
 
-                FILE *fp = popen("/usr/bin/lspci -d ::03xx | grep -i nvidia", "r");
-                if (!fp) { perror("popen failed"); return 1; }
-
-                char line[512] = {0};
-                fgets(line, sizeof(line), fp);
-                pclose(fp);
-
-                const char *pkg = NULL;
-
-                if (strstr(line, "RTX 20") || strstr(line, "RTX 30") || strstr(line, "RTX 40") ||
-                    strstr(line, "RTX 50") || strstr(line, "GTX 16") || strstr(line, "TITAN RTX")) {
-                    pkg = "nvidia";
-                } else if (strstr(line, "GTX 9") || strstr(line, "GTX 10") || strstr(line, "TITAN X") ||
-                           strstr(line, "TITAN V")) {
-                    pkg = "nvidia580";
-                } else if (strstr(line, "GTX 7") || strstr(line, "GTX 6") || strstr(line, "TITAN\n") ||
-                           strstr(line, "TITAN Z") || strstr(line, "TITAN Black")) {
-                    pkg = "nvidia470";
-                } else if (strstr(line, "GTX 5") || strstr(line, "GTX 4") || strstr(line, "GT 5") ||
-                           strstr(line, "GT 4")) {
-                    pkg = "nvidia390";
-                }
-
-                if (!pkg) {
-                    printf("Could not auto-detect GPU family from: %s\n", line);
-                    printf("Please check manually: lspci -k -d ::03xx\n");
-                    printf("And consult: https://nouveau.freedesktop.org/CodeNames.html\n");
+                FILE *fp = popen("/usr/bin/lspci -nn -d 10de:", "r");
+                if (!fp) {
+                    perror("popen failed");
                     return 1;
                 }
 
-                printf("Detected family package: %s\n", pkg);
+                char full_output[2048] = {0};
+                char line[256];
+                while (fgets(line, sizeof(line), fp)) {
+                    strncat(full_output, line, sizeof(full_output) - strlen(full_output) - 1);
+                }
+                pclose(fp);
+
+                if (strlen(full_output) == 0) {
+                    printf("WARNING: No Nvidia GPU detected (Vendor ID 10de).\n");
+                    printf("Continuing anyway, but installation may fail.\n");
+                } else {
+                    printf("Detected Nvidia hardware:\n%s\n", full_output);
+                }
+
+                const char *pkg = "nvidia";
+                
+                if (strstr(full_output, "GTX 10") || strstr(full_output, "GTX 9") || 
+                    strstr(full_output, "GTX 7") || strstr(full_output, "GTX 6")) {
+                    printf("Legacy GPU detected (Maxwell/Pascal). Suggesting nvidia470.\n");
+                    pkg = "nvidia470";
+                } else if (strstr(full_output, "GTX 5") || strstr(full_output, "GTX 4") || 
+                           strstr(full_output, "GT 5") || strstr(full_output, "GT 4")) {
+                    printf("Very old GPU detected (Kepler/Fermi). Suggesting nvidia390.\n");
+                    pkg = "nvidia390";
+                }
+
+                printf("\nThe script will install the '%s' package.\n", pkg);
+                printf("If this is incorrect, abort now (Ctrl+C) and check: https://docs.voidlinux.org/config/graphical-session/nvidia.html\n");
+                printf("Continuing in 5 seconds...\n");
+                sleep(5);
+
                 char cmd[256];
-                snprintf(cmd, sizeof(cmd), "/usr/bin/xbps-install -S %s", pkg);
-                sleep(1);
+                snprintf(cmd, sizeof(cmd), "/usr/bin/xbps-install -Sy %s", pkg);
                 TRY(cmd);
+
+                printf("Updating initramfs (this may take a minute)...\n");
+                if (system("/usr/bin/dracut -f --force > /dev/null 2>&1") != 0) {
+                    printf("WARNING: 'dracut' failed or not found.\n");
+                    printf("If you use mkinitcpio, you MUST run: sudo mkinitcpio -P\n");
+                }
+
+                printf("Nvidia driver installed successfully!\n");
+                printf("TIP: If you get a black screen on boot, add 'nvidia' to MODULES in /etc/dracut.conf.d/nvidia.conf\n");
                 return 0;
             }
 
@@ -160,7 +174,20 @@ int instchronyc(void) {
     return 0;
 }
 
+int inststeamlib(int is_nvidia) { // fix by qwen
+    if (is_nvidia) {
+        printf("Installing 32-bit libs for Nvidia...\n");
+        TRY("/usr/bin/xbps-install -Sy libgcc-32bit libstdc++-32bit libdrm-32bit libglvnd-32bit nvidia-libs-32bit");
+    } else {
+        printf("Installing generic 32-bit libs (AMD/Intel)...\n");
+        TRY("/usr/bin/xbps-install -Sy libgcc-32bit libstdc++-32bit libdrm-32bit libglvnd-32bit");
+    }
+    return 0;
+}
+
 int main(void) {
+    int is_nvidia_proprietary = 0;
+    
     if (getuid() != 0) {
         fprintf(stderr, "error: this installer must be run as root (sudo)!\n");
         return 1;
@@ -172,7 +199,7 @@ int main(void) {
         return 1;
     }
     
-    TRY("/usr/bin/xbps-install -Sy void-repo-nonfree"); // install repo for propietary nvidia driver
+    TRY("/usr/bin/xbps-install -Sy void-repo-nonfree void-repo-multilib void-repo-multilib-nonfree"); // install repo for propietary nvidia driver and steam libs
     
     TRY("/usr/bin/xbps-install -Sy");
 
@@ -203,7 +230,7 @@ int main(void) {
     TRY("/usr/bin/ln -sf /etc/sv/rtkit /var/service");
     
     printf("installing kde6 (plasma), sddm...\n");
-    TRY("/usr/bin/xbps-install -y xorg kde5 kde5-baseapps sddm");
+    TRY("/usr/bin/xbps-install -y xorg kde5 kde5-baseapps sddm"); // dont worry bradar the kde 5 its kde 6.5 because repo 
     
     if (drivers() != 0) {
         fprintf(stderr, "driver installation failed\n");
@@ -235,6 +262,13 @@ int main(void) {
     if (ask_user("install and configure chrony?")) {
         if (instchronyc() != 0) {
             fprintf(stderr, "chrony setup failed, continuing anyway\n");
+        }
+    }
+    
+    if (ask_user("install steam libs? after that you can just install 'steam' package and it will be working!!1!")) { // fix by qwen because i said the reason
+        int steam_is_nvidia = ask_user("Are you using the proprietary Nvidia driver? (for 32-bit libs)");
+        if (inststeamlib(steam_is_nvidia) != 0) {
+            fprintf(stderr, "steam libs setup failed, continuing anyway\n");
         }
     }
     
